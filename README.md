@@ -3,6 +3,7 @@
 
 
 - ▶ **Try it:** https://s11dkoba.github.io/two-way-perpetuals/
+- 🎬 **Demo video:** https://s11dkoba.github.io/two-way-perpetuals/demo.mp4
 
 ## About
 
