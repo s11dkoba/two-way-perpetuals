@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two-Way Perpetuals</title>
+<style>
+:root{--bg:#0b0e14;--panel:#121722;--panel2:#161c29;--chip:#1c2333;--line:#242b3b;--text:#e6e9ef;--mute:#8b93a7;--green:#2ee6a6;--gbtn:#12b886;--red:#ff5c7a;--amber:#f5c542;--warn:#ffb020}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP","Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
+body{min-height:100vh;background:radial-gradient(900px 400px at 50% -100px,#12b88622,transparent),var(--bg)}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.app{max-width:560px;margin:0 auto;padding:0 14px 96px;min-height:100vh}
+header.top{display:flex;align-items:center;gap:8px;padding:12px 0;position:sticky;top:0;background:#0b0e14ee;backdrop-filter:blur(8px);z-index:5}
+.logo{font-weight:800;font-size:15px;letter-spacing:.2px;display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.logo span.n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logo b{color:var(--green)}
+.badge{font-size:10px;background:#ffb02033;color:var(--warn);padding:2px 6px;border-radius:6px;font-weight:700;white-space:nowrap}
+.wallet{font-size:12px;background:var(--chip);border:1px solid var(--line);padding:7px 10px;border-radius:10px;white-space:nowrap}
+.wallet.on{border-color:#2ee6a655;color:var(--green)}
+.lang{display:flex;background:var(--chip);border-radius:10px;padding:2px;border:1px solid var(--line)}
+.lang button{font-size:12px;padding:5px 8px;border-radius:8px;color:var(--mute)}
+.lang button.active{background:var(--gbtn);color:#04130d;font-weight:700}
+.card{background:var(--panel);border-radius:16px;padding:14px;border:1px solid #1b2230}
+.mute{color:var(--mute)}
+.up{color:var(--green)}.down{color:var(--red)}
+h2{font-size:16px;margin:4px 0 12px;display:flex;align-items:center;gap:8px}
+.pair{font-size:12px;color:var(--mute);display:flex;justify-content:space-between}
+.price{font-size:34px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums;transition:color .3s}
+.chg{font-size:13px;font-variant-numeric:tabular-nums}
+#chart{margin-top:10px;background:#0e131d;border-radius:10px;overflow:hidden}
+#chart svg{display:block;width:100%;height:auto}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:#0e131d;border-radius:10px;padding:8px 10px}
+.stat small{display:block;font-size:10px;color:var(--mute)}
+.stat b{font-size:13px;font-variant-numeric:tabular-nums}
+.ls{display:flex;gap:10px;margin:14px 0}
+.ls button{flex:1;border-radius:14px;padding:16px 0;font-weight:800;font-size:16px;transition:transform .1s}
+.ls button:active{transform:scale(.97)}
+.btn-long{background:var(--gbtn);color:#04130d;box-shadow:0 0 18px #12b88666}
+.btn-short{background:var(--red);color:#2a0510;box-shadow:0 0 18px #ff5c7a66}
+.mini{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;margin-bottom:12px;font-size:13px}
+.mini b{font-size:16px;font-variant-numeric:tabular-nums}
+.sim{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.sim button{background:var(--chip);border-radius:10px;padding:9px 0;font-size:13px;font-weight:700;border:1px solid var(--line)}
+.note{font-size:11px;color:var(--mute);line-height:1.6;margin:10px 2px}
+.link{font-size:12px;color:var(--mute);text-decoration:underline;padding:6px}
+.pos{margin-bottom:12px;animation:pop .35s ease}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.pos-h{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.tag{font-size:12px;font-weight:800;padding:3px 8px;border-radius:8px}
+.tag.long{background:#12b88626;color:var(--green)}.tag.short{background:#ff5c7a26;color:var(--red)}
+.pnl{font-size:34px;font-weight:800;margin-top:8px;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin:12px 0;font-size:12px}
+.grid div{display:flex;justify-content:space-between;gap:6px;border-bottom:1px solid #1b2230;padding-bottom:5px}
+.grid span:first-child{color:var(--mute)}
+.grid b{font-variant-numeric:tabular-nums}
+.bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;border-radius:5px;transition:width .6s,background .6s}
+.row{display:flex;justify-content:space-between;font-size:12px;margin-top:6px;font-variant-numeric:tabular-nums}
+.closebtn{width:100%;margin-top:14px;background:var(--line);border-radius:12px;padding:13px;font-weight:700}
+.closebtn:hover{background:#2e364a}
+.empty{text-align:center;padding:30px 10px;color:var(--mute);font-size:14px;line-height:1.7}
+.empty .big{font-size:36px}
+.hist{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:9px 0;border-bottom:1px solid #1b2230;font-variant-numeric:tabular-nums}
+.hist:last-child{border:0}
+.sum{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
+.sum b{font-size:24px;font-variant-numeric:tabular-nums}
+.box{background:var(--panel);border-radius:14px;padding:14px;margin-bottom:6px;border:1px solid #1b2230}
+.box label,.box .lbl{font-size:11px;color:var(--mute)}
+.inrow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px}
+.inrow input{background:none;border:0;color:var(--text);font-size:26px;font-weight:800;width:100%;min-width:0;font-family:inherit;padding:2px 0}
+.inrow input::placeholder{color:#4b5468}
+.coin{background:var(--chip);padding:7px 11px;border-radius:10px;white-space:nowrap;font-weight:700;font-size:14px}
+.chips{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.chips button{background:var(--chip);border:1px solid var(--line);padding:6px 11px;border-radius:9px;font-size:12px;color:var(--mute)}
+.chips button.active{border-color:var(--green);color:var(--green)}
+.flip{text-align:center;color:var(--green);font-size:20px;margin:2px 0}
+.bigbtn{width:100%;border-radius:12px;padding:15px 0;text-align:center;font-weight:800;font-size:15px;background:var(--gbtn);color:#04130d;box-shadow:0 0 18px #12b88666;margin-top:14px}
+.bigbtn:disabled{background:var(--line);color:var(--mute);box-shadow:none;cursor:not-allowed}
+.err{color:var(--red);font-size:12px;min-height:16px;margin-top:8px}
+.tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:560px;display:flex;background:var(--panel2);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:6}
+.tabs button{flex:1;padding:8px 0;font-size:12px;color:var(--mute);border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+.tabs button .ic{font-size:20px}
+.tabs button[aria-selected=true]{color:var(--green);background:#12b88614}
+.cnt{position:absolute;top:2px;left:calc(50% + 10px);background:var(--red);color:#2a0510;font-size:10px;font-weight:800;border-radius:9px;padding:0 5px;min-width:16px}
+.overlay{position:fixed;inset:0;background:#000a;opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s;z-index:10}
+.overlay.open{opacity:1;visibility:visible}
+.sheet{position:fixed;bottom:0;left:50%;width:100%;max-width:560px;transform:translate(-50%,100%);visibility:hidden;transition:transform .3s cubic-bezier(.2,.8,.2,1),visibility .3s;background:#161c29;border-radius:22px 22px 0 0;padding:8px 16px calc(18px + env(safe-area-inset-bottom));z-index:11;max-height:92vh;overflow:auto;box-shadow:0 -10px 40px #000a}
+.sheet.open{transform:translate(-50%,0);visibility:visible}
+.handle{display:block;width:44px;height:5px;background:#3a4256;border-radius:3px;margin:4px auto 10px;padding:0}
+.sh-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sh-h h3{margin:0;font-size:16px}
+.x{width:34px;height:34px;border-radius:10px;background:var(--chip);font-size:16px}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;padding:10px;border-radius:10px;background:#242b3b;color:var(--mute);font-weight:800}
+.seg button.on-long{background:var(--gbtn);color:#04130d}
+.seg button.on-short{background:var(--red);color:#2a0510}
+.sh-in{background:#0e131d;border-radius:12px;padding:10px 12px;margin-top:12px}
+input[type=range]{width:100%;accent-color:var(--gbtn);margin:8px 0 0}
+.sumlist{margin:12px 0 0;font-size:13px;line-height:1.9}
+.sumlist div{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+.sumlist dt{color:var(--mute)}.sumlist dd{margin:0;font-weight:700}
+.toast{position:fixed;left:50%;bottom:90px;transform:translate(-50%,20px);background:#1f2738;border:1px solid #2ee6a666;color:var(--text);padding:11px 16px;border-radius:12px;font-size:13px;opacity:0;pointer-events:none;transition:.3s;z-index:20;max-width:90%;text-align:center;box-shadow:0 6px 24px #000a}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.bad{border-color:#ff5c7a88}
+@media(min-width:700px){.price{font-size:42px}.app{padding-top:6px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div class="logo"><span aria-hidden="true">⚡</span><span class="n">Two-Way <b>Perps</b></span><span class="badge" data-i18n="demo">DEMO</span></div>
+  <button class="wallet" id="walletBtn" data-demo="wallet-connect"></button>
+  <div class="lang" data-demo="lang-switch" role="group" data-i18n-aria="langAria">
+    <button data-lang="ja" data-demo="lang-ja">日本語</button><button data-lang="en" data-demo="lang-en">EN</button>
+  </div>
+</header>
+
+<main>
+<section id="tab-trade" data-tab="trade">
+  <div class="card" data-demo="price-card">
+    <div class="pair"><span>BTC/USD <span data-i18n="perp">Perpetual</span></span><span data-i18n="live">● LIVE (デモ)</span></div>
+    <div class="price" id="price" data-demo="price">$0</div>
+    <div class="chg" id="chg"></div>
+    <div id="chart" data-demo="chart" role="img" data-i18n-aria="chartAria"></div>
+    <div class="stats">
+      <div class="stat"><small data-i18n="balance">USDC</small><b id="balTrade" data-demo="balance"></b></div>
+      <div class="stat"><small data-i18n="maxLev">Max</small><b>3x</b></div>
+      <div class="stat"><small data-i18n="funding">Funding</small><b data-i18n="fundingVal">+0.01%/h</b></div>
+    </div>
+  </div>
+  <div class="ls">
+    <button class="btn-long" data-demo="open-long" data-i18n="sideLong">Long ▲</button>
+    <button class="btn-short" data-demo="open-short" data-i18n="sideShort">Short ▼</button>
+  </div>
+  <button class="card mini" id="mini" data-demo="mini-position"></button>
+  <div class="card">
+    <div class="lbl mute" style="font-size:12px" data-i18n="simTitle">Price simulator</div>
+    <div class="sim">
+      <button data-demo="sim-dump10" data-p="-10">−10%</button><button data-demo="sim-dump3" data-p="-3">−3%</button>
+      <button data-demo="sim-pump3" data-p="3">+3%</button><button data-demo="sim-pump10" data-p="10">+10%</button>
+    </div>
+  </div>
+  <p class="note" data-i18n="mockJup">Mock</p>
+  <div style="text-align:center"><button class="link" data-demo="reset-demo" data-i18n="reset">Reset</button></div>
+</section>
+
+<section id="tab-positions" data-tab="positions" hidden>
+  <h2><span data-i18n="posTitle">Positions</span><span class="badge" data-i18n="mock">MOCK</span></h2>
+  <div class="sum card">
+    <div><div class="mute" style="font-size:11px" data-i18n="totalPnl">Total</div><b id="totalPnl" data-demo="total-pnl">$0</b></div>
+    <div style="text-align:right"><div class="mute" style="font-size:11px" data-i18n="balance">USDC</div><b id="balPos" style="font-size:16px"></b></div>
+  </div>
+  <div id="posList" data-demo="position-list"></div>
+  <h2 style="margin-top:20px" data-i18n="history">History</h2>
+  <div class="card" id="histList" data-demo="history-list"></div>
+</section>
+
+<section id="tab-swap" data-tab="swap" hidden>
+  <h2><span data-i18n="swapTitle">Swap</span><span class="badge" data-i18n="mock">MOCK</span></h2>
+  <div class="box">
+    <div style="display:flex;justify-content:space-between"><span class="lbl" data-i18n="pay">Pay</span><span class="lbl" id="swapBal" data-demo="swap-balance"></span></div>
+    <div class="inrow"><input id="swapAmt" type="number" inputmode="decimal" min="0" step="any" value="0.05" data-demo="swap-amount" data-i18n-aria="payAria"><span class="coin" id="payCoin"></span></div>
+    <div class="chips" id="assetChips"></div>
+  </div>
+  <div class="flip" aria-hidden="true">⇅</div>
+  <div class="box">
+    <div class="lbl" data-i18n="receive">Receive</div>
+    <div class="inrow"><b id="swapOut" data-demo="swap-receive" style="font-size:26px;color:var(--green)">0</b><span class="coin">$ USDC</span></div>
+  </div>
+  <div class="note" id="swapInfo" data-demo="swap-info" style="font-size:12px"></div>
+  <div class="err" id="swapErr" role="alert"></div>
+  <button class="bigbtn" id="swapBtn" data-demo="swap-submit" data-i18n="swapBtn">Swap</button>
+  <p class="note" data-i18n="mockChg">Mock</p>
+  <p class="note up" data-i18n="swapNote">USDC can be margin</p>
+  <h2 style="margin-top:16px" data-i18n="recent">Recent</h2>
+  <div class="card" id="swapHist" data-demo="swap-history"></div>
+</section>
+</main>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-t="trade" data-demo="tab-trade" aria-selected="true"><span class="ic">📈</span><span data-i18n="tabTrade">Trade</span></button>
+  <button role="tab" data-t="positions" data-demo="tab-positions" aria-selected="false"><span class="ic">📂</span><span data-i18n="tabPos">Positions</span><span class="cnt" id="cnt" hidden>0</span></button>
+  <button role="tab" data-t="swap" data-demo="tab-swap" aria-selected="false"><span class="ic">🔄</span><span data-i18n="tabSwap">Swap</span></button>
+</nav>
+
+<div class="overlay" id="overlay" data-demo="sheet-overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle" tabindex="-1" data-demo="order-sheet">
+  <button class="handle" data-demo="sheet-handle" data-i18n-aria="close" id="handle"></button>
+  <div class="sh-h"><h3 id="shTitle" data-i18n="newOrder">New order</h3><button class="x" id="shClose" data-demo="sheet-close" data-i18n-aria="close">✕</button></div>
+  <div class="seg">
+    <button id="segLong" data-side="long" data-demo="sheet-long" data-i18n="sideLong">Long</button>
+    <button id="segShort" data-side="short" data-demo="sheet-short" data-i18n="sideShort">Short</button>
+  </div>
+  <div class="sh-in">
+    <div style="display:flex;justify-content:space-between"><span class="lbl mute" style="font-size:11px" data-i18n="margin">Margin</span><span class="mute" style="font-size:11px"><span data-i18n="avail">Avail</span>: <span id="shAvail"></span></span></div>
+    <div class="inrow"><input id="marginIn" type="number" inputmode="decimal" min="0" step="any" value="100" data-demo="margin-input" data-i18n-aria="margin"><span class="coin">USDC</span></div>
+    <div class="chips" id="quick">
+      <button data-q="0.25" data-demo="quick-25">25%</button><button data-q="0.5" data-demo="quick-50">50%</button><button data-q="1" data-demo="quick-max">MAX</button>
+    </div>
+  </div>
+  <div class="sh-in">
+    <div style="display:flex;justify-content:space-between;font-size:12px"><span class="mute" data-i18n="leverage">Leverage</span><b id="levVal" class="up">3x</b></div>
+    <input id="levIn" type="range" min="1" max="3" step="0.1" value="3" data-demo="leverage-slider" data-i18n-aria="leverage">
+  </div>
+  <dl class="sumlist" data-demo="order-summary">
+    <div><dt data-i18n="entryPrice">Entry</dt><dd id="sEntry"></dd></div>
+    <div><dt data-i18n="size">Size</dt><dd id="sSize"></dd></div>
+    <div><dt data-i18n="notional">Notional</dt><dd id="sNot"></dd></div>
+    <div><dt data-i18n="liqPrice">Liq</dt><dd id="sLiq" class="down"></dd></div>
+    <div><dt data-i18n="fee">Fee</dt><dd id="sFee"></dd></div>
+  </dl>
+  <div class="err" id="shErr" role="alert"></div>
+  <button class="bigbtn" id="confirmBtn" data-demo="confirm-order" style="margin-top:6px"></button>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" data-demo="toast"></div>
+
+<script>
+const I18N={
+ja:{
+title:"Two-Way Perpetuals",demo:"DEMO",mock:"MOCK",perp:"パーペチュアル",live:"● LIVE（デモ価格）",
+connect:"ウォレット接続",walletOn:"Phantom 7xKp…9fQ2 ✓",langAria:"言語切替",chartAria:"BTC/USD 価格チャート",
+tabTrade:"取引",tabPos:"ポジション",tabSwap:"Swap",
+balance:"USDC 残高",maxLev:"最大レバレッジ",funding:"資金調達率",fundingVal:"+0.01% / 時",
+sideLong:"Long ▲",sideShort:"Short ▼",
+simTitle:"🎛 価格シミュレーター（デモ用）：価格を動かして損益と清算距離を確認",
+mockJup:"※ Jupiter Perpetuals API とウォレット接続はデモモードで再現したモックです。実際の取引・資金移動は行われません。BTC/USD のみ、USDC 証拠金、最大3倍。",
+reset:"デモをリセット",noPos:"オープン中のポジションはありません",miniOpen:"オープン {n} 件 ・ 含み損益",
+newOrder:"新規注文",margin:"証拠金 (USDC)",avail:"利用可能",leverage:"レバレッジ",
+entryPrice:"約定価格（参考）",size:"数量",notional:"建玉",liqPrice:"清算価格",fee:"手数料 (0.1%)",
+confirmLong:"Long BTC を確認",confirmShort:"Short BTC を確認",close:"閉じる",
+errMin:"証拠金は最低 {n} USDC です",errBal:"USDC が足りません。Swap で追加できます",errWallet:"先にウォレットを接続してください",
+posTitle:"ポジション",totalPnl:"含み損益 合計",psize:"数量 (BTC)",pnot:"建玉",pmargin:"証拠金",pentry:"平均約定価格",pmark:"現在価格",pliq:"清算価格",pfee:"手数料（建玉時）",
+safety:"安全度",toLiq:"清算までの価格変動",closeBtn:"ポジションを決済",history:"取引履歴",histEmpty:"まだ履歴はありません",
+closedTag:"決済",liqTag:"清算",emptyTitle:"ポジションはまだありません",emptyHint:"「取引」タブで Long / Short を選んで始めましょう",
+swapTitle:"Swap",pay:"支払う",payAria:"支払う数量",receive:"受け取る (Solana)",swapBtn:"交換する",swapping:"交換中…",max:"全額",
+rate:"レート",swapFee:"手数料（約0.5%）",eta:"所要時間",etaVal:"約3分（モック）",walletBal:"残高",
+mockChg:"※ Changelly Exchange API v2 の連携はデモモードで再現したモックです。実際の交換は行われません。",
+swapNote:"💡 受け取った Solana USDC は、そのまま取引の証拠金として使えます（Swap と取引は独立した機能です）。",
+recent:"最近の交換",swapEmpty:"まだ交換はありません",errAmt:"数量を入力してください",errSwapBal:"残高が足りません",
+tOpened:"{side} {lev}x を建てました（証拠金 {m} USDC）",tClosed:"決済しました：損益 {p}",tLiq:"⚠️ 清算されました（{side} {lev}x）",
+tSwap:"{a} {c} → {b} USDC に交換しました（モック）",tWalletOn:"ウォレットを接続しました（モック）",tWalletOff:"ウォレットを切断しました",tReset:"デモを初期状態に戻しました"
+},
+en:{
+title:"Two-Way Perpetuals",demo:"DEMO",mock:"MOCK",perp:"Perpetual",live:"● LIVE (demo price)",
+connect:"Connect wallet",walletOn:"Phantom 7xKp…9fQ2 ✓",langAria:"Language",chartAria:"BTC/USD price chart",
+tabTrade:"Trade",tabPos:"Positions",tabSwap:"Swap",
+balance:"USDC balance",maxLev:"Max leverage",funding:"Funding rate",fundingVal:"+0.01% / hr",
+sideLong:"Long ▲",sideShort:"Short ▼",
+simTitle:"🎛 Price simulator (demo): move the price to watch PnL and liquidation distance",
+mockJup:"* The Jupiter Perpetuals API and wallet connection are mocked in demo mode. No real trades or funds are involved. BTC/USD only, USDC margin, up to 3x.",
+reset:"Reset demo",noPos:"No open positions",miniOpen:"{n} open · Unrealized PnL",
+newOrder:"New order",margin:"Margin (USDC)",avail:"Available",leverage:"Leverage",
+entryPrice:"Entry price (est.)",size:"Size",notional:"Position size",liqPrice:"Liquidation price",fee:"Fee (0.1%)",
+confirmLong:"Confirm Long BTC",confirmShort:"Confirm Short BTC",close:"Close",
+errMin:"Minimum margin is {n} USDC",errBal:"Not enough USDC. You can add some in Swap.",errWallet:"Please connect your wallet first",
+posTitle:"Positions",totalPnl:"Total unrealized PnL",psize:"Size (BTC)",pnot:"Position size",pmargin:"Margin",pentry:"Avg. entry price",pmark:"Mark price",pliq:"Liquidation price",pfee:"Fee (on open)",
+safety:"Safety",toLiq:"Price move to liquidation",closeBtn:"Close position",history:"Trade history",histEmpty:"No history yet",
+closedTag:"Closed",liqTag:"Liquidated",emptyTitle:"No positions yet",emptyHint:"Pick Long or Short in the Trade tab to start",
+swapTitle:"Swap",pay:"You pay",payAria:"Amount to pay",receive:"You receive (Solana)",swapBtn:"Swap",swapping:"Swapping…",max:"Max",
+rate:"Rate",swapFee:"Fee (about 0.5%)",eta:"Estimated time",etaVal:"About 3 min (mock)",walletBal:"Balance",
+mockChg:"* The Changelly Exchange API v2 integration is mocked in demo mode. No real swap happens.",
+swapNote:"💡 The Solana USDC you receive can be used as margin for trading (Swap and trading are separate features).",
+recent:"Recent swaps",swapEmpty:"No swaps yet",errAmt:"Enter an amount",errSwapBal:"Not enough balance",
+tOpened:"Opened {side} {lev}x (margin {m} USDC)",tClosed:"Closed: PnL {p}",tLiq:"⚠️ Liquidated ({side} {lev}x)",
+tSwap:"Swapped {a} {c} → {b} USDC (mock)",tWalletOn:"Wallet connected (mock)",tWalletOff:"Wallet disconnected",tReset:"Demo reset to its starting state"
+}};
+const FEE=0.001,MM=0.005,MAX_LEV=3,MIN_MARGIN=10,SWAP_FEE=0.005,BASE=67420.5,OPEN24=66590;
+let lang="en";
+function t(k,p){let s=(I18N[lang]&&I18N[lang][k])||I18N.en[k]||k;if(p)for(const x in p)s=s.replace("{"+x+"}",p[x]);return s}
+function $(id){return document.getElementById(id)}
+/* ---------- state ---------- */
+function def(){return{usdc:1000,btc:0.05,eth:1.2,sol:10,connected:true,nextId:2,
+ positions:[{id:1,side:"long",lev:3,margin:200,entry:67050,size:200*3/67050,fee:0.6}],
+ history:[{side:"short",lev:2,entry:68100,exit:67350,pnl:21.6,reason:"close"},{side:"long",lev:2,entry:67900,exit:67200,pnl:-20.6,reason:"close"}],
+ swaps:[{a:"0.4",c:"SOL",b:"66.5"}]}}
+let S=def();
+try{const r=JSON.parse(localStorage.getItem("twp_state"));if(r&&Array.isArray(r.positions))S=Object.assign(def(),r)}catch(e){}
+function save(){try{localStorage.setItem("twp_state",JSON.stringify(S))}catch(e){}}
+/* ---------- helpers ---------- */
+const nf=(n,d)=>Number(n).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const usd=(n,d=2)=>"$"+nf(n,d);
+const sg=(n,d=2)=>(n>=0?"+":"−")+"$"+nf(Math.abs(n),d);
+const fl=v=>String(+Number(v).toFixed(1));
+const sideName=s=>s==="long"?"Long":"Short";
+function liqOf(side,entry,lev){return side==="long"?entry*(1-1/lev+MM):entry*(1+1/lev-MM)}
+function calc(p){const dir=p.side==="long"?1:-1,liq=liqOf(p.side,p.entry,p.lev);
+ const pnl=(price-p.entry)*p.size*dir,pct=pnl/p.margin*100;
+ const safe=Math.max(0,Math.min(1,Math.abs(price-liq)/Math.abs(p.entry-liq)))*((price-liq)*dir>0?1:0);
+ const move=(liq-price)/price*100;return{pnl,pct,liq,safe,move}}
+function toast(msg,bad){const el=$("toast");el.textContent=msg;el.classList.toggle("bad",!!bad);el.classList.add("show");clearTimeout(toast.h);toast.h=setTimeout(()=>el.classList.remove("show"),2800)}
+/* ---------- price ---------- */
+let price=BASE,hist=[],lastDir=1;
+(function(){let s=7,v=BASE*0.992;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
+ for(let i=0;i<60;i++){v*=1+(rnd()-0.46)*0.0016;hist.push(v)}
+ const k=BASE/hist[59];hist=hist.map(x=>x*k);price=BASE})();
+function setPrice(p){lastDir=p>=price?1:-1;price=p;hist.push(p);if(hist.length>60)hist.shift();refresh()}
+function renderPrice(){const el=$("price");el.textContent=usd(price);el.className="price "+(lastDir>0?"up":"down");
+ const c=(price/OPEN24-1)*100;const ce=$("chg");ce.textContent=(c>=0?"▲ +":"▼ −")+nf(Math.abs(c),2)+"% (24h)";ce.className="chg "+(c>=0?"up":"down")}
+function renderChart(){const W=330,H=130,pd=14;let mn=Math.min(...hist),mx=Math.max(...hist);const r=(mx-mn)||1;mn-=r*.1;mx+=r*.1;
+ const X=i=>i/(hist.length-1)*W,Y=v=>pd+(1-(v-mn)/(mx-mn))*(H-2*pd);
+ const pts=hist.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1));
+ const col=hist[hist.length-1]>=hist[0]?"#2ee6a6":"#ff5c7a";
+ let lines="";S.positions.forEach(p=>{if(p.entry>mn&&p.entry<mx){const y=Y(p.entry).toFixed(1);lines+=`<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="${p.side==="long"?"#2ee6a6":"#ff5c7a"}" stroke-dasharray="4 4" opacity=".55"/><text x="4" y="${y-3}" font-size="8" fill="#8b93a7">${sideName(p.side)} ${usd(p.entry,0)}</text>`}});
+ $("chart").innerHTML=`<svg viewBox="0 0 ${W} ${H}"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs><path d="M0,${H} L${pts.join(" L")} L${W},${H} Z" fill="url(#ag)"/>${lines}<polyline fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round" points="${pts.join(" ")}"/><circle cx="${W}" cy="${Y(price).toFixed(1)}" r="3.5" fill="${col}"/><text x="${W-4}" y="10" font-size="8" fill="#8b93a7" text-anchor="end">${usd(Math.max(...hist),0)}</text><text x="${W-4}" y="${H-3}" font-size="8" fill="#8b93a7" text-anchor="end">${usd(Math.min(...hist),0)}</text></svg>`}
+/* ---------- positions ---------- */
+function renderPositions(){const box=$("posList");
+ if(!S.positions.length)box.innerHTML=`<div class="card empty"><div class="big">📭</div><b>${t("emptyTitle")}</b><br>${t("emptyHint")}</div>`;
+ else box.innerHTML=S.positions.map(p=>`<div class="card pos" data-id="${p.id}" data-demo="position-card">
+ <div class="pos-h"><span>BTC/USD</span><span class="tag ${p.side}">${sideName(p.side)} ${fl(p.lev)}x</span></div>
+ <div class="pnl" data-f="pnl"></div><div class="chg" data-f="pct"></div>
+ <div class="grid">
+ <div><span>${t("psize")}</span><b>${nf(p.size,5)}</b></div><div><span>${t("pnot")}</span><b>${usd(p.size*p.entry)}</b></div>
+ <div><span>${t("pmargin")}</span><b>${usd(p.margin)}</b></div><div><span>${t("pentry")}</span><b>${usd(p.entry)}</b></div>
+ <div><span>${t("pmark")}</span><b data-f="mark"></b></div><div><span>${t("pliq")}</span><b class="down">${usd(liqOf(p.side,p.entry,p.lev))}</b></div>
+ <div style="grid-column:1/-1"><span>${t("pfee")}</span><b>${usd(p.fee)}</b></div></div>
+ <div class="mute" style="font-size:12px">${t("toLiq")}</div>
+ <div class="bar" data-demo="liq-bar"><i data-f="bar"></i></div>
+ <div class="row"><span data-f="safe"></span><span data-f="move"></span></div>
+ <button class="closebtn" data-close="${p.id}" data-demo="close-position">${t("closeBtn")}</button></div>`).join("");
+ const h=$("histList");
+ h.innerHTML=S.history.length?S.history.slice(0,8).map(x=>`<div class="hist"><span><span class="tag ${x.side}" style="font-size:11px">${sideName(x.side)} ${fl(x.lev)}x</span> <span class="mute">${x.reason==="liq"?"⚠️ "+t("liqTag"):t("closedTag")}</span></span><span class="mute">${usd(x.entry,0)} → ${usd(x.exit,0)}</span><b class="${x.pnl>=0?"up":"down"}">${sg(x.pnl)}</b></div>`).join(""):`<div class="mute" style="font-size:13px">${t("histEmpty")}</div>`;
+ const c=$("cnt");c.textContent=S.positions.length;c.hidden=!S.positions.length;
+ liveCards();renderMini()}
+function liveCards(){let tot=0;
+ S.positions.forEach(p=>{const c=calc(p);tot+=c.pnl;const el=document.querySelector(`.pos[data-id="${p.id}"]`);if(!el)return;
+ const f=k=>el.querySelector(`[data-f="${k}"]`),up=c.pnl>=0;
+ f("pnl").textContent=sg(c.pnl);f("pnl").className="pnl "+(up?"up":"down");
+ f("pct").textContent=(up?"▲ +":"▼ −")+nf(Math.abs(c.pct),2)+"%";f("pct").className="chg "+(up?"up":"down");
+ f("mark").textContent=usd(price);
+ const sp=Math.round(c.safe*100),col=sp>50?"#12b886":sp>25?"#f5c542":"#ff5c7a";
+ const b=f("bar");b.style.width=Math.max(sp,2)+"%";b.style.background=col;
+ f("safe").textContent=t("safety")+" "+sp+"%";f("safe").style.color=col;
+ f("move").textContent=(c.move>=0?"+":"−")+nf(Math.abs(c.move),1)+"%"});
+ const te=$("totalPnl");te.textContent=sg(tot);te.className=tot>=0?"up":"down";return tot}
+function renderMini(){let tot=0;S.positions.forEach(p=>tot+=calc(p).pnl);const m=$("mini");
+ m.innerHTML=S.positions.length?`<span class="mute">${t("miniOpen",{n:S.positions.length})}</span><b class="${tot>=0?"up":"down"}">${sg(tot)} ›</b>`:`<span class="mute">${t("noPos")}</span>`}
+function checkLiq(){let hit=false;
+ S.positions=S.positions.filter(p=>{const l=liqOf(p.side,p.entry,p.lev);
+  const dead=p.side==="long"?price<=l:price>=l;
+  if(dead){hit=true;S.history.unshift({side:p.side,lev:p.lev,entry:p.entry,exit:l,pnl:-(p.margin+p.fee),reason:"liq"});toast(t("tLiq",{side:sideName(p.side),lev:fl(p.lev)}),true)}
+  return !dead});
+ if(hit){save();renderPositions();renderBal()}}
+function closePos(id){const i=S.positions.findIndex(p=>p.id===id);if(i<0)return;const p=S.positions[i],c=calc(p);
+ const cf=p.size*price*FEE,back=Math.max(0,p.margin+c.pnl-cf),net=c.pnl-p.fee-cf;
+ S.usdc=+(S.usdc+back).toFixed(6);S.positions.splice(i,1);
+ S.history.unshift({side:p.side,lev:p.lev,entry:p.entry,exit:price,pnl:net,reason:"close"});S.history=S.history.slice(0,20);
+ save();renderPositions();renderBal();toast(t("tClosed",{p:sg(net)}))}
+/* ---------- balances / wallet ---------- */
+function renderBal(){const b=usd(S.usdc);$("balTrade").textContent=b;$("balPos").textContent=b;$("shAvail").textContent=b+" USDC";renderSwapBal()}
+function renderWallet(){const w=$("walletBtn");w.textContent=S.connected?t("walletOn"):t("connect");w.classList.toggle("on",S.connected)}
+function needWallet(){if(S.connected)return false;toast(t("errWallet"),true);return true}
+/* ---------- bottom sheet ---------- */
+let sh={side:"long",open:false,lastFocus:null};
+function openSheet(side){if(needWallet())return;sh.side=side;sh.lastFocus=document.activeElement;sh.open=true;
+ $("overlay").classList.add("open");$("sheet").classList.add("open");updateSheet();setTimeout(()=>$("sheet").focus(),50)}
+function closeSheet(){if(!sh.open)return;sh.open=false;$("overlay").classList.remove("open");$("sheet").classList.remove("open");if(sh.lastFocus&&sh.lastFocus.focus)sh.lastFocus.focus()}
+function sheetVals(){const m=parseFloat($("marginIn").value)||0,lev=parseFloat($("levIn").value)||1,not=m*lev;
+ return{m,lev,not,size:not/price,fee:not*FEE,liq:liqOf(sh.side,price,lev)}}
+function updateSheet(){if(!sh.open)return;const v=sheetVals(),L=sh.side==="long";
+ $("segLong").className=L?"on-long":"";$("segShort").className=L?"":"on-short";
+ $("levVal").textContent=fl(v.lev)+"x";
+ $("sEntry").textContent=usd(price);$("sSize").textContent=nf(v.size,5)+" BTC";$("sNot").textContent=usd(v.not);$("sLiq").textContent=usd(v.liq);$("sFee").textContent=usd(v.fee);
+ const cb=$("confirmBtn");cb.textContent=t(L?"confirmLong":"confirmShort");cb.style.background=L?"":"var(--red)";cb.style.color=L?"":"#2a0510";cb.style.boxShadow=L?"":"0 0 18px #ff5c7a66";
+ let err="";if(v.m<MIN_MARGIN)err=t("errMin",{n:MIN_MARGIN});else if(v.m+v.fee>S.usdc+1e-9)err=t("errBal");
+ $("shErr").textContent=err;cb.disabled=!!err}
+function openPosition(){const v=sheetVals();if(needWallet())return;if(v.m<MIN_MARGIN||v.m+v.fee>S.usdc+1e-9)return;
+ S.usdc=+(S.usdc-v.m-v.fee).toFixed(6);
+ S.positions.push({id:S.nextId++,side:sh.side,lev:+v.lev.toFixed(1),margin:v.m,entry:price,size:v.size,fee:v.fee});
+ save();closeSheet();renderPositions();renderBal();renderChart();switchTab("positions");
+ toast(t("tOpened",{side:sideName(sh.side),lev:fl(v.lev),m:nf(v.m,2)}))}
+/* ---------- swap ---------- */
+const ASSETS={BTC:{ic:"₿",key:"btc",px:()=>price,d:6},ETH:{ic:"Ξ",key:"eth",px:()=>3480*price/BASE,d:5},SOL:{ic:"◎",key:"sol",px:()=>168*price/BASE,d:4}};
+let asset="BTC",swapping=false;
+function renderChips(){$("assetChips").innerHTML=Object.keys(ASSETS).map(k=>`<button class="${k===asset?"active":""}" data-asset="${k}" data-demo="asset-${k.toLowerCase()}">${ASSETS[k].ic} ${k}</button>`).join("")+`<button data-max="1" data-demo="swap-max">${t("max")}</button>`;
+ $("payCoin").textContent=ASSETS[asset].ic+" "+asset}
+function renderSwapBal(){const a=ASSETS[asset];$("swapBal").textContent=t("walletBal")+": "+nf(S[a.key],a.d)+" "+asset}
+function swapQuote(){const amt=parseFloat($("swapAmt").value)||0,a=ASSETS[asset],rate=a.px(),gross=amt*rate,fee=gross*SWAP_FEE,out=gross-fee;return{amt,rate,fee,out}}
+function updateSwapQuote(){const q=swapQuote();$("swapOut").textContent=nf(q.out,2);
+ $("swapInfo").innerHTML=`${t("rate")}: 1 ${asset} = ${nf(q.rate,2)} USDC<br>${t("swapFee")}: ${nf(q.fee,2)} USDC<br>${t("eta")}: ${t("etaVal")}`;
+ let e="";if(q.amt<=0)e=t("errAmt");else if(q.amt>S[ASSETS[asset].key]+1e-12)e=t("errSwapBal");
+ $("swapErr").textContent=($("swapAmt").value===""?"":e);$("swapBtn").disabled=!!e||swapping||!S.connected;
+ $("swapBtn").textContent=swapping?t("swapping"):t("swapBtn")}
+function doSwap(){if(needWallet()||swapping)return;const q=swapQuote(),k=ASSETS[asset].key;if(q.amt<=0||q.amt>S[k]+1e-12)return;
+ swapping=true;updateSwapQuote();
+ setTimeout(()=>{swapping=false;S[k]=Math.max(0,+(S[k]-q.amt).toFixed(8));S.usdc=+(S.usdc+q.out).toFixed(6);
+  S.swaps.unshift({a:String(+q.amt.toFixed(6)),c:asset,b:nf(q.out,2)});S.swaps=S.swaps.slice(0,5);save();
+  renderBal();renderSwapHist();updateSwapQuote();toast(t("tSwap",{a:+q.amt.toFixed(6),c:asset,b:nf(q.out,2)}))},1200)}
+function renderSwapHist(){$("swapHist").innerHTML=S.swaps.length?S.swaps.map(x=>`<div class="hist"><span>${x.a} ${x.c} → <b class="up">${x.b} USDC</b></span><span class="badge">MOCK</span></div>`).join(""):`<div class="mute" style="font-size:13px">${t("swapEmpty")}</div>`}
+/* ---------- tabs ---------- */
+function switchTab(n){document.querySelectorAll("[data-tab]").forEach(s=>s.hidden=s.dataset.tab!==n);
+ document.querySelectorAll(".tabs [data-t]").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===n));window.scrollTo(0,0)}
+/* ---------- refresh / i18n ---------- */
+function refresh(){renderPrice();renderChart();checkLiq();liveCards();renderMini();updateSheet();updateSwapQuote()}
+function applyLang(){document.documentElement.lang=lang;document.title=t("title");
+ document.querySelectorAll("[data-i18n]").forEach(e=>e.textContent=t(e.dataset.i18n));
+ document.querySelectorAll("[data-i18n-aria]").forEach(e=>e.setAttribute("aria-label",t(e.dataset.i18nAria)));
+ document.querySelectorAll(".lang button").forEach(b=>b.classList.toggle("active",b.dataset.lang===lang));
+ renderWallet();renderChips();renderPositions();renderSwapHist();renderBal();refresh()}
+function setLang(l){lang=l;try{localStorage.setItem("lang",l)}catch(e){}applyLang()}
+(function(){let l=null;if(window.APP_LANG==="ja"||window.APP_LANG==="en")l=window.APP_LANG;
+ if(!l){try{const q=new URLSearchParams(location.search).get("lang");if(q==="ja"||q==="en")l=q}catch(e){}}
+ if(!l){try{const s=localStorage.getItem("lang");if(s==="ja"||s==="en")l=s}catch(e){}}
+ lang=l||"en"})();
+/* ---------- events ---------- */
+document.querySelectorAll(".lang button").forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
+document.querySelectorAll(".tabs [data-t]").forEach(b=>b.onclick=()=>switchTab(b.dataset.t));
+document.querySelector('[data-demo="open-long"]').onclick=()=>openSheet("long");
+document.querySelector('[data-demo="open-short"]').onclick=()=>openSheet("short");
+$("mini").onclick=()=>switchTab("positions");
+$("overlay").onclick=closeSheet;$("shClose").onclick=closeSheet;$("handle").onclick=closeSheet;
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
+$("segLong").onclick=()=>{sh.side="long";updateSheet()};$("segShort").onclick=()=>{sh.side="short";updateSheet()};
+$("marginIn").oninput=updateSheet;$("levIn").oninput=updateSheet;
+$("quick").onclick=e=>{const b=e.target.closest("[data-q]");if(!b)return;const f=parseFloat(b.dataset.q),lev=parseFloat($("levIn").value)||1;
+ const maxM=S.usdc/(1+lev*FEE);$("marginIn").value=(Math.floor(maxM*f*100)/100).toFixed(2);updateSheet()};
+$("confirmBtn").onclick=openPosition;
+$("posList").onclick=e=>{const b=e.target.closest("[data-close]");if(b)closePos(+b.dataset.close)};
+document.querySelectorAll(".sim button").forEach(b=>b.onclick=()=>{const pc=parseFloat(b.dataset.p)/100,steps=4;let i=0;
+ const iv=setInterval(()=>{i++;setPrice(price*Math.pow(1+pc,1/steps));if(i>=steps)clearInterval(iv)},150)});
+$("walletBtn").onclick=()=>{S.connected=!S.connected;save();renderWallet();updateSwapQuote();toast(t(S.connected?"tWalletOn":"tWalletOff"))};
+$("assetChips").onclick=e=>{const a=e.target.closest("[data-asset]"),m=e.target.closest("[data-max]");
+ if(a){asset=a.dataset.asset;$("swapAmt").value=asset==="BTC"?"0.05":asset==="ETH"?"1":"5";renderChips();renderSwapBal();updateSwapQuote()}
+ if(m){$("swapAmt").value=String(S[ASSETS[asset].key]);updateSwapQuote()}};
+$("swapAmt").oninput=updateSwapQuote;$("swapBtn").onclick=doSwap;
+document.querySelector('[data-demo="reset-demo"]').onclick=()=>{closeSheet();S=def();save();asset="BTC";$("swapAmt").value="0.05";applyLang();toast(t("tReset"))};
+/* ---------- start ---------- */
+applyLang();
+setInterval(()=>{const drift=(BASE-price)/BASE*0.02;setPrice(price*(1+drift+(Math.random()-0.5)*0.0016))},1200);
+</script>
+</body>
+</html>
